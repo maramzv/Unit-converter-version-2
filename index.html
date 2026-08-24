@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kilometer ⇄ Mile Converter</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --sign-green: #0A5C36;
+    --sign-green-light: #0f7444;
+    --sign-green-dark: #06331e;
+    --sign-border: #f2f5ef;
+    --glow-green: #2be385;
+    --vp: 72%; /* vanishing point / road position, shifted right so the car is visible past the sign */
+  }
+
+  *{ box-sizing: border-box; }
+
+  html,body{
+    height:100%;
+    margin:0;
+    padding:0;
+    font-family:'Oswald','Segoe UI',Arial,sans-serif;
+    overflow-x:hidden;
+    background:#0d0620;
+  }
+
+  /* ================= BACKGROUND SCENE ================= */
+  .scene{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    overflow:hidden;
+    background: linear-gradient(180deg, #1a1035 0%, #33144f 45%, #5b1a7a 75%, #7a2074 100%);
+  }
+
+  .stars{
+    position:absolute;
+    top:0; left:0; right:0; height:50%;
+    background-image:
+      radial-gradient(1px 1px at 8% 18%, rgba(255,255,255,.85), transparent),
+      radial-gradient(1px 1px at 22% 38%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1.5px 1.5px at 55% 12%, rgba(255,255,255,.9), transparent),
+      radial-gradient(1px 1px at 78% 28%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 40% 8%, rgba(255,255,255,.7), transparent),
+      radial-gradient(1px 1px at 92% 45%, rgba(255,255,255,.6), transparent),
+      radial-gradient(1.5px 1.5px at 12% 50%, rgba(255,255,255,.5), transparent),
+      radial-gradient(1px 1px at 66% 55%, rgba(255,255,255,.4), transparent);
+    opacity:.85;
+  }
+
+  /* sun */
+  .sun-wrap{
+    position:absolute;
+    left:var(--vp);
+    top:34%;
+    transform:translate(-50%,-50%);
+    width:min(40vw, 380px);
+    height:min(40vw, 380px);
+    border-radius:50%;
+    overflow:hidden;
+    background: linear-gradient(180deg, #ffe27a 0%, #ffb14c 30%, #ff7a5c 60%, #ff3d8b 85%, #e02f9c 100%);
+    box-shadow: 0 0 90px 25px rgba(255,130,150,.45), 0 0 160px 60px rgba(255,80,160,.28);
+  }
+  .sun-wrap .band{
+    position:absolute;
+    left:0; right:0;
+    height:5.5%;
+    background:#1a1035;
+  }
+  .band1{ top:46%; }
+  .band2{ top:55%; }
+  .band3{ top:64%; }
+  .band4{ top:73%; }
+  .band5{ top:82%; }
+  .band6{ top:91%; }
+
+  .horizon-glow{
+    position:absolute;
+    left:0; right:0;
+    top:58%;
+    height:3px;
+    background: linear-gradient(90deg, transparent, #ff9ad6, #fff2c2, #35e6ff, transparent);
+    box-shadow: 0 0 40px 8px rgba(255,170,220,.55);
+    z-index:3;
+  }
+
+  /* ---- 3D perspective grid floor ---- */
+  .ground{
+    position:absolute;
+    left:0; right:0; bottom:0; top:58%;
+    overflow:hidden;
+    background: linear-gradient(180deg, #1c0a2c 0%, #12071e 50%, #0a0414 100%);
+    perspective: 300px;
+    perspective-origin: 50% 0%;
+  }
+  .grid-plane{
+    position:absolute;
+    left:-50%;
+    top:0;
+    width:200%;
+    height:220%;
+    transform-style: preserve-3d;
+    transform: rotateX(78deg);
+    transform-origin: 50% 0%;
+    background-image:
+      repeating-linear-gradient(90deg, rgba(255,45,220,.55) 0 2px, transparent 2px 60px),
+      repeating-linear-gradient(0deg, rgba(53,230,255,.45) 0 2px, transparent 2px 60px);
+    background-size: 60px 60px;
+    animation: gridscroll 1.4s linear infinite;
+  }
+  @keyframes gridscroll{
+    from{ background-position: 0 0, 0 0; }
+    to{ background-position: 0 60px, 0 60px; }
+  }
+  .ground::before{
+    /* fade grid into horizon */
+    content:"";
+    position:absolute;
+    inset:0;
+    background: linear-gradient(180deg, #12071e 0%, transparent 18%, transparent 70%, #0a0414 100%);
+    pointer-events:none;
+    z-index:2;
+  }
+
+  /* road strip painted over the grid, for the cars to sit on */
+  .road{
+    position:absolute;
+    left:var(--vp);
+    bottom:0;
+    top:0;
+    width:100%;
+    transform: translateX(-50%);
+    pointer-events:none;
+    z-index:2;
+  }
+  .road-shape{
+    position:absolute;
+    inset:0;
+    background: linear-gradient(180deg, rgba(40,15,55,.6) 0%, rgba(20,8,30,.75) 50%, rgba(10,4,18,.9) 100%);
+    clip-path: polygon(48.5% 0%, 51.5% 0%, 80% 100%, 20% 100%);
+  }
+  .road-center-line{
+    position:absolute;
+    left:50%;
+    top:0; bottom:0;
+    width:6px;
+    transform: translateX(-50%);
+    clip-path: polygon(49% 0%, 51% 0%, 51.6% 100%, 48.4% 100%);
+    background: repeating-linear-gradient(180deg, #fff2c2 0 24px, transparent 24px 48px);
+    animation: dashmove .45s linear infinite;
+    box-shadow: 0 0 14px 3px rgba(255,240,190,.6);
+  }
+  @keyframes dashmove{
+    from{ background-position-y:0; }
+    to{ background-position-y:72px; }
+  }
+
+  /* silhouettes */
+  .silhouettes{
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    z-index:1;
+  }
+  .mountain{
+    position:absolute;
+    width:0; height:0;
+    border-left: 100px solid transparent;
+    border-right: 100px solid transparent;
+    border-bottom: 130px solid #000;
+    opacity:.4;
+    filter: blur(2px);
+  }
+  .m1{ left:-3%; top:44%; }
+  .m2{ left:11%; top:48%; border-bottom-width:90px; opacity:.28; }
+  .m3{ right:-3%; top:44%; }
+  .m4{ right:11%; top:48%; border-bottom-width:90px; opacity:.28; }
+
+  /* ---- CARS ---- */
+  .car-lane{
+    position:absolute;
+    left:var(--vp);
+    bottom:2%;
+    width:0;
+    height:0;
+    z-index:4;
+  }
+  .car{
+    position:absolute;
+    left:0; top:0;
+    width:76px;
+    height:30px;
+    transform: translate(-50%, -100%);
+    animation: driveAway 7s cubic-bezier(.45,0,.85,.35) infinite;
+  }
+  .car.car-b{
+    animation: driveAway 7s cubic-bezier(.45,0,.85,.35) infinite;
+    animation-delay: 3.5s;
+  }
+  @keyframes driveAway{
+    0%{
+      transform: translate(-50%,-100%) translateY(0) scale(1);
+      opacity:1;
+    }
+    80%{
+      transform: translate(-50%,-100%) translateY(-49vh) scale(.06);
+      opacity:1;
+    }
+    100%{
+      transform: translate(-50%,-100%) translateY(-52vh) scale(.04);
+      opacity:0;
+    }
+  }
+  .car-body{
+    position:relative;
+    width:76px;
+    height:26px;
+    background: linear-gradient(180deg,#2a2a38,#101018);
+    border-radius:8px 16px 5px 5px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.55);
+  }
+  .car-body::before{ /* cabin */
+    content:"";
+    position:absolute;
+    top:-12px; left:18px;
+    width:36px; height:14px;
+    background: linear-gradient(180deg,#33334a,#16161f);
+    border-radius:8px 8px 0 0;
+  }
+  .car-body::after{ /* windshield glint */
+    content:"";
+    position:absolute;
+    top:-9px; left:22px;
+    width:12px; height:7px;
+    background: rgba(160,220,255,.5);
+    border-radius:3px;
+  }
+  .taillight{
+    position:absolute;
+    top:7px;
+    width:10px; height:10px;
+    border-radius:50%;
+    background:#ff2050;
+    box-shadow: 0 0 10px 4px #ff2050, 0 0 22px 9px rgba(255,32,80,.65);
+  }
+  .tl-left{ left:2px; }
+  .tl-right{ right:2px; }
+
+  .scanlines{
+    position:absolute;
+    inset:0;
+    background: repeating-linear-gradient(
+      180deg,
+      rgba(255,255,255,0.04) 0px,
+      rgba(255,255,255,0.04) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    mix-blend-mode: overlay;
+    opacity:.55;
+    z-index:5;
+  }
+  .vignette{
+    position:absolute;
+    inset:0;
+    box-shadow: inset 0 0 180px 50px rgba(0,0,0,.65);
+    z-index:5;
+  }
+
+  /* ================= FOREGROUND: SIGN ================= */
+  .stage{
+    position:relative;
+    z-index:10;
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    padding: 32px clamp(20px, 5vw, 70px);
+  }
+
+  .sign{
+    position:relative;
+    width:min(88vw, 520px);
+    background:
+      linear-gradient(115deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 22%),
+      linear-gradient(160deg, var(--sign-green-light) 0%, var(--sign-green) 45%, var(--sign-green-dark) 100%);
+    border: 8px solid var(--sign-border);
+    border-radius: 14px;
+    padding: 30px 32px 28px;
+    box-shadow:
+      0 0 34px 8px rgba(43,227,133,.4),
+      0 0 80px 22px rgba(43,227,133,.22),
+      0 24px 55px rgba(0,0,0,.6),
+      inset 0 3px 5px rgba(255,255,255,.25),
+      inset 0 -8px 18px rgba(0,0,0,.4),
+      inset 0 0 0 2px rgba(255,255,255,.06);
+    overflow:hidden;
+  }
+
+  /* grain / noise texture */
+  .sign::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)' opacity='0.06'/></svg>");
+    mix-blend-mode: overlay;
+    opacity:.5;
+    pointer-events:none;
+  }
+
+  /* retroreflective sheen sweep */
+  .sign::after{
+    content:"";
+    position:absolute;
+    top:-60%;
+    left:-40%;
+    width:55%;
+    height:220%;
+    background: linear-gradient(
+      75deg,
+      rgba(255,255,255,0) 0%,
+      rgba(255,255,255,.22) 45%,
+      rgba(255,255,255,0) 62%
+    );
+    transform: rotate(8deg);
+    animation: sheen 6s ease-in-out infinite;
+    pointer-events:none;
+  }
+  @keyframes sheen{
+    0%{ left:-45%; }
+    40%{ left:120%; }
+    100%{ left:120%; }
+  }
+
+  .sign-inner{
+    position:relative;
+    z-index:2;
+  }
+
+  /* bolts */
+  .bolt{
+    position:absolute;
+    width:14px; height:14px;
+    border-radius:50%;
+    background: radial-gradient(circle at 32% 30%, #ffffff 0%, #cfd8d2 30%, #8a968e 60%, #4c5750 100%);
+    box-shadow: 0 2px 3px rgba(0,0,0,.6), inset 0 -1px 2px rgba(0,0,0,.4);
+    z-index:3;
+  }
+  .bolt::after{
+    content:"";
+    position:absolute;
+    top:50%; left:50%;
+    width:8px; height:2px;
+    background: rgba(60,65,60,.7);
+    transform: translate(-50%,-50%) rotate(28deg);
+    border-radius:1px;
+  }
+  .bolt.tl{ top:12px; left:12px; }
+  .bolt.tr{ top:12px; right:12px; }
+  .bolt.bl{ bottom:12px; left:12px; }
+  .bolt.br{ bottom:12px; right:12px; }
+
+  .sign-font{
+    text-transform: uppercase;
+    color:#fff;
+    text-shadow: 0 0 8px rgba(255,255,255,.22);
+  }
+
+  .title{
+    font-weight:700;
+    font-size: clamp(20px, 4.6vw, 32px);
+    letter-spacing: 1px;
+    text-align:center;
+    margin-bottom:6px;
+  }
+  .subhead{
+    font-weight:400;
+    font-size: clamp(11px, 2.2vw, 13.5px);
+    letter-spacing: .5px;
+    text-transform:none;
+    opacity:.88;
+    text-align:center;
+    line-height:1.45;
+    margin: 0 auto 22px;
+    max-width: 46ch;
+    text-shadow:none;
+  }
+
+  .step-label{
+    font-weight:600;
+    font-size: clamp(11.5px, 2.4vw, 13.5px);
+    letter-spacing: 2.5px;
+    margin-bottom:8px;
+    opacity:.92;
+  }
+
+  .readout{
+    background: rgba(0,0,0,.2);
+    border: 2px solid rgba(255,255,255,.55);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 22px;
+  }
+  .readout input{
+    width:100%;
+    background:transparent;
+    border:none;
+    outline:none;
+    color:#fff;
+    font-family:'Oswald','Segoe UI',sans-serif;
+    font-weight:700;
+    font-size: clamp(32px, 8vw, 48px);
+    letter-spacing: 1px;
+    text-shadow: 0 0 10px rgba(255,255,255,.3);
+  }
+  .readout input::placeholder{ color: rgba(255,255,255,.4); }
+  .readout input::-webkit-outer-spin-button,
+  .readout input::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .readout input[type=number]{ -moz-appearance:textfield; }
+
+  .direction-row{
+    display:flex;
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+  .dir-btn{
+    flex:1;
+    cursor:pointer;
+    font-family:'Oswald','Segoe UI',sans-serif;
+    font-weight:700;
+    font-size: clamp(13px, 2.6vw, 16px);
+    letter-spacing: 1px;
+    color:#fff;
+    text-transform:uppercase;
+    padding: 14px 8px;
+    border-radius: 8px;
+    border: 2.5px solid rgba(255,255,255,.7);
+    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0));
+    box-shadow: 0 3px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.15);
+    transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+  }
+  .dir-btn:hover{ background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.02)); }
+  .dir-btn.active{
+    background: linear-gradient(180deg, #f2f5ef, #d7ded6);
+    color: var(--sign-green-dark);
+    text-shadow:none;
+    border-color:#fff;
+    transform: translateY(2px);
+    box-shadow: 0 1px 0 rgba(0,0,0,.35), inset 0 2px 5px rgba(0,0,0,.35);
+  }
+
+  .result-label{
+    font-weight:600;
+    font-size: clamp(11.5px, 2.4vw, 13.5px);
+    letter-spacing: 2.5px;
+    margin-bottom:8px;
+    opacity:.92;
+  }
+  .result-readout{
+    background: rgba(0,0,0,.28);
+    border: 2px solid rgba(255,255,255,.7);
+    border-radius: 8px;
+    padding: 12px 14px;
+    box-shadow: inset 0 0 18px rgba(0,0,0,.35);
+  }
+  .result-readout .value{
+    font-family:'Oswald','Segoe UI',sans-serif;
+    font-weight:700;
+    font-size: clamp(36px, 9vw, 54px);
+    letter-spacing: 1px;
+    color:#fff;
+    text-shadow: 0 0 14px var(--glow-green), 0 0 4px rgba(255,255,255,.5);
+  }
+
+  .footer-note{
+    margin-top: 20px;
+    text-align:center;
+    font-size: clamp(10.5px, 2vw, 12px);
+    letter-spacing: 2px;
+    opacity:.8;
+  }
+
+  .swap-anim{ animation: swap-pop .3s ease; }
+  @keyframes swap-pop{
+    0%{ transform: scale(1); opacity:1; }
+    35%{ transform: scale(.85) translateY(6px); opacity:.35; }
+    100%{ transform: scale(1) translateY(0); opacity:1; }
+  }
+
+  @media (max-width: 760px){
+    .stage{ justify-content:center; }
+    .sign{ width:min(92vw, 480px); }
+  }
+
+  @media (max-width: 520px){
+    .sign{ padding: 24px 18px 22px; border-radius:12px; }
+    .direction-row{ flex-direction:column; }
+    .readout{ padding: 8px 12px; margin-bottom:18px; }
+  }
+</style>
+</head>
+<body>
+
+  <div class="scene" aria-hidden="true">
+    <div class="stars"></div>
+
+    <div class="sun-wrap">
+      <div class="band band1"></div>
+      <div class="band band2"></div>
+      <div class="band band3"></div>
+      <div class="band band4"></div>
+      <div class="band band5"></div>
+      <div class="band band6"></div>
+    </div>
+    <div class="horizon-glow"></div>
+
+    <div class="silhouettes">
+      <div class="mountain m1"></div>
+      <div class="mountain m2"></div>
+      <div class="mountain m3"></div>
+      <div class="mountain m4"></div>
+    </div>
+
+    <div class="ground">
+      <div class="grid-plane"></div>
+      <div class="road">
+        <div class="road-shape"></div>
+        <div class="road-center-line"></div>
+      </div>
+      <div class="car-lane">
+        <div class="car car-a">
+          <div class="car-body">
+            <div class="taillight tl-left"></div>
+            <div class="taillight tl-right"></div>
+          </div>
+        </div>
+        <div class="car car-b">
+          <div class="car-body">
+            <div class="taillight tl-left"></div>
+            <div class="taillight tl-right"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="scanlines"></div>
+    <div class="vignette"></div>
+  </div>
+
+  <div class="stage">
+    <div class="sign">
+      <span class="bolt tl"></span>
+      <span class="bolt tr"></span>
+      <span class="bolt bl"></span>
+      <span class="bolt br"></span>
+
+      <div class="sign-inner">
+        <div class="title sign-font">Kilometer &#8644; Mile Converter</div>
+        <p class="subhead sign-font">Enter a number below, choose which direction to convert, and the converted distance appears instantly on the sign.</p>
+
+        <div class="step-label sign-font">1. Enter a Number</div>
+        <div class="readout">
+          <input type="number" id="inputValue" class="sign-font" placeholder="0" inputmode="decimal" autocomplete="off" />
+        </div>
+
+        <div class="step-label sign-font">2. Choose Conversion Direction</div>
+        <div class="direction-row">
+          <button class="dir-btn active sign-font" id="btnKmToMi" type="button">KM &rarr; Miles</button>
+          <button class="dir-btn sign-font" id="btnMiToKm" type="button">Miles &rarr; KM</button>
+        </div>
+
+        <div class="result-label sign-font" id="resultLabel">Result (Miles)</div>
+        <div class="result-readout" id="resultBlock">
+          <div class="value sign-font" id="outputValue">0</div>
+        </div>
+
+        <div class="footer-note sign-font">1 KM = 0.621371 MI</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const KM_TO_MI = 0.621371;
+  const MI_TO_KM = 1 / KM_TO_MI;
+
+  const inputValue = document.getElementById('inputValue');
+  const outputValue = document.getElementById('outputValue');
+  const resultLabel = document.getElementById('resultLabel');
+  const resultBlock = document.getElementById('resultBlock');
+  const btnKmToMi = document.getElementById('btnKmToMi');
+  const btnMiToKm = document.getElementById('btnMiToKm');
+
+  let direction = 'km-to-mi';
+
+  function formatNumber(n){
+    if (!isFinite(n)) return '0';
+    return (Math.round(n * 1e6) / 1e6).toString();
+  }
+
+  function convert(){
+    const raw = inputValue.value.trim();
+    const num = parseFloat(raw);
+
+    if (raw === '' || isNaN(num)) {
+      outputValue.textContent = '0';
+      return;
+    }
+
+    const factor = direction === 'km-to-mi' ? KM_TO_MI : MI_TO_KM;
+    outputValue.textContent = formatNumber(num * factor);
+  }
+
+  function updateDirectionUI(){
+    if (direction === 'km-to-mi') {
+      btnKmToMi.classList.add('active');
+      btnMiToKm.classList.remove('active');
+      resultLabel.textContent = 'Result (Miles)';
+    } else {
+      btnMiToKm.classList.add('active');
+      btnKmToMi.classList.remove('active');
+      resultLabel.textContent = 'Result (Kilometers)';
+    }
+  }
+
+  function playSwapAnimation(){
+    resultBlock.classList.remove('swap-anim');
+    void resultBlock.offsetWidth;
+    resultBlock.classList.add('swap-anim');
+  }
+
+  function setDirection(next){
+    if (next === direction) return;
+    direction = next;
+    updateDirectionUI();
+    playSwapAnimation();
+    convert();
+  }
+
+  btnKmToMi.addEventListener('click', () => setDirection('km-to-mi'));
+  btnMiToKm.addEventListener('click', () => setDirection('mi-to-km'));
+  inputValue.addEventListener('input', convert);
+
+  updateDirectionUI();
+  convert();
+</script>
+
+</body>
+</html>
