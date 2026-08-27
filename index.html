@@ -28,6 +28,17 @@
     background:#0d0620;
   }
 
+  /* ================= VIDEO BACKGROUND (test layer, sits over the CSS scene) ================= */
+  .bg-video{
+    position:fixed;
+    inset:0;
+    z-index:1;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    pointer-events:none;
+  }
+
   /* ================= BACKGROUND SCENE ================= */
   .scene{
     position:fixed;
@@ -180,7 +191,7 @@
   .m3{ right:-3%; top:44%; }
   .m4{ right:11%; top:48%; border-bottom-width:90px; opacity:.28; }
 
-  /* ---- CARS ---- */
+  /* ---- CARS: neon 3D wireframe wedge, rear three-quarter view ---- */
   .car-lane{
     position:absolute;
     left:var(--vp);
@@ -192,8 +203,8 @@
   .car{
     position:absolute;
     left:0; top:0;
-    width:76px;
-    height:30px;
+    width:130px;
+    height:64px;
     transform: translate(-50%, -100%);
     animation: driveAway 7s cubic-bezier(.45,0,.85,.35) infinite;
   }
@@ -215,40 +226,114 @@
       opacity:0;
     }
   }
-  .car-body{
+
+  .car-3d{
     position:relative;
-    width:76px;
-    height:26px;
-    background: linear-gradient(180deg,#2a2a38,#101018);
-    border-radius:8px 16px 5px 5px;
-    box-shadow: 0 6px 14px rgba(0,0,0,.55);
+    width:130px;
+    height:64px;
+    perspective: 480px;
   }
-  .car-body::before{ /* cabin */
+
+  /* magenta/cyan ground bloom under the car */
+  .car-glow{
+    position:absolute;
+    left:50%; bottom:-4px;
+    width:150px; height:26px;
+    transform: translateX(-50%);
+    background: radial-gradient(ellipse at center, rgba(53,230,255,.55) 0%, rgba(255,45,220,.35) 45%, transparent 75%);
+    filter: blur(4px);
+    z-index:0;
+  }
+
+  /* main wedge body silhouette, drawn with clip-path, filled almost-black with neon edge */
+  .car-body-3d{
+    position:absolute;
+    left:0; top:14px;
+    width:130px;
+    height:44px;
+    background: linear-gradient(180deg, rgba(20,10,30,.9), rgba(5,5,10,.95));
+    clip-path: polygon(
+      2% 78%, 8% 40%, 20% 30%, 34% 14%, 46% 8%, 66% 8%, 78% 16%, 88% 32%, 98% 42%,
+      100% 70%, 92% 92%, 78% 100%, 22% 100%, 8% 92%
+    );
+    transform: rotateX(4deg);
+    transform-style: preserve-3d;
+    z-index:2;
+    /* layered neon tube glow: inner cyan line, outer cyan bloom, magenta halo */
+    box-shadow:
+      inset 0 0 6px 1px #35e6ff,
+      inset 0 0 0 1.5px rgba(53,230,255,.9),
+      0 0 10px 2px #35e6ff,
+      0 0 26px 8px rgba(53,230,255,.55),
+      0 0 46px 16px rgba(255,45,220,.4);
+  }
+  /* wireframe panel lines etched onto the body */
+  .car-body-3d::before{
     content:"";
     position:absolute;
-    top:-12px; left:18px;
-    width:36px; height:14px;
-    background: linear-gradient(180deg,#33334a,#16161f);
-    border-radius:8px 8px 0 0;
+    inset:0;
+    background-image:
+      repeating-linear-gradient(100deg, rgba(53,230,255,.5) 0 1px, transparent 1px 14px),
+      repeating-linear-gradient(12deg, rgba(255,45,220,.3) 0 1px, transparent 1px 18px);
+    mix-blend-mode: screen;
+    opacity:.5;
   }
-  .car-body::after{ /* windshield glint */
+
+  /* roof / cabin plane, tilted slightly for a pseudo-3D fastback look */
+  .car-roof{
+    position:absolute;
+    left:30%; top:-13px;
+    width:44%; height:22px;
+    background: linear-gradient(180deg, rgba(20,10,30,.9), rgba(5,5,10,.95));
+    clip-path: polygon(8% 100%, 22% 15%, 78% 15%, 92% 100%);
+    transform: rotateX(10deg);
+    transform-origin: bottom center;
+    z-index:3;
+    box-shadow:
+      inset 0 0 5px 1px #35e6ff,
+      inset 0 0 0 1.5px rgba(53,230,255,.85),
+      0 0 10px 2px rgba(53,230,255,.8);
+  }
+  .car-window{
+    position:absolute;
+    left:24%; top:22%;
+    width:52%; height:52%;
+    background: rgba(120,220,255,.18);
+    clip-path: polygon(6% 100%, 18% 10%, 82% 10%, 94% 100%);
+  }
+
+  .wheel{
+    position:absolute;
+    bottom:2px;
+    width:20px; height:20px;
+    border-radius:50%;
+    background: radial-gradient(circle at 40% 35%, rgba(30,20,35,.95), rgba(5,5,10,1) 70%);
+    box-shadow:
+      inset 0 0 0 2px rgba(53,230,255,.85),
+      0 0 8px 2px rgba(53,230,255,.6);
+    z-index:1;
+  }
+  .wheel::after{
     content:"";
     position:absolute;
-    top:-9px; left:22px;
-    width:12px; height:7px;
-    background: rgba(160,220,255,.5);
-    border-radius:3px;
+    inset:5px;
+    border-radius:50%;
+    background: conic-gradient(rgba(53,230,255,.6) 0 20deg, transparent 20deg 90deg, rgba(53,230,255,.6) 90deg 110deg, transparent 110deg 180deg, rgba(53,230,255,.6) 180deg 200deg, transparent 200deg 270deg, rgba(53,230,255,.6) 270deg 290deg, transparent 290deg 360deg);
   }
+  .wheel-l{ left:10px; }
+  .wheel-r{ right:10px; }
+
   .taillight{
     position:absolute;
-    top:7px;
-    width:10px; height:10px;
-    border-radius:50%;
+    top:26px;
+    width:11px; height:9px;
+    border-radius:3px;
     background:#ff2050;
-    box-shadow: 0 0 10px 4px #ff2050, 0 0 22px 9px rgba(255,32,80,.65);
+    box-shadow: 0 0 10px 4px #ff2050, 0 0 24px 10px rgba(255,32,80,.7);
+    z-index:3;
   }
-  .tl-left{ left:2px; }
-  .tl-right{ right:2px; }
+  .tl-left{ left:4px; }
+  .tl-right{ right:4px; }
 
   .scanlines{
     position:absolute;
@@ -505,6 +590,10 @@
 </head>
 <body>
 
+  <!-- <video class="bg-video" autoplay muted loop playsinline aria-hidden="true">
+    <source src="assets/bg-drive.mp4" type="video/mp4">
+  </video> -->
+
   <div class="scene" aria-hidden="true">
     <div class="stars"></div>
 
@@ -533,13 +622,23 @@
       </div>
       <div class="car-lane">
         <div class="car car-a">
-          <div class="car-body">
+          <div class="car-3d">
+            <div class="car-glow"></div>
+            <div class="car-body-3d"></div>
+            <div class="car-roof"><div class="car-window"></div></div>
+            <div class="wheel wheel-l"></div>
+            <div class="wheel wheel-r"></div>
             <div class="taillight tl-left"></div>
             <div class="taillight tl-right"></div>
           </div>
         </div>
         <div class="car car-b">
-          <div class="car-body">
+          <div class="car-3d">
+            <div class="car-glow"></div>
+            <div class="car-body-3d"></div>
+            <div class="car-roof"><div class="car-window"></div></div>
+            <div class="wheel wheel-l"></div>
+            <div class="wheel wheel-r"></div>
             <div class="taillight tl-left"></div>
             <div class="taillight tl-right"></div>
           </div>
