@@ -49,6 +49,42 @@
     padding: 32px clamp(20px, 5vw, 70px);
   }
 
+  .sign-post{
+    position:relative;
+  }
+
+  /* the two support posts planting the sign into the ground, styled to match the sign's metal bolts */
+  .post-leg{
+    position:absolute;
+    top:100%;
+    width: clamp(16px, 2.6vw, 22px);
+    height: clamp(70px, 14vh, 160px);
+    background: linear-gradient(90deg, #d7ded6 0%, #9aa69c 18%, #6b756d 45%, #8a968e 60%, #4c5750 100%);
+    border-radius: 3px;
+    box-shadow:
+      2px 0 4px rgba(0,0,0,.45),
+      inset -2px 0 3px rgba(0,0,0,.35),
+      inset 2px 0 2px rgba(255,255,255,.25),
+      0 0 16px 2px rgba(43,227,133,.28);
+  }
+  .post-leg::before,
+  .post-leg::after{
+    /* rivets running down the post, matching the sign's corner bolts */
+    content:"";
+    position:absolute;
+    left:50%;
+    width: 60%;
+    aspect-ratio: 1;
+    border-radius:50%;
+    transform: translateX(-50%);
+    background: radial-gradient(circle at 32% 30%, #ffffff 0%, #cfd8d2 30%, #8a968e 60%, #4c5750 100%);
+    box-shadow: 0 1px 2px rgba(0,0,0,.55);
+  }
+  .post-leg::before{ top:14%; }
+  .post-leg::after{ top:60%; }
+  .post-leg.left{ left:14%; }
+  .post-leg.right{ right:14%; }
+
   .sign{
     position:relative;
     width:min(88vw, 520px);
@@ -277,7 +313,10 @@
   </video>
 
   <div class="stage">
-    <div class="sign">
+    <div class="sign-post">
+      <div class="post-leg left"></div>
+      <div class="post-leg right"></div>
+      <div class="sign">
       <span class="bolt tl"></span>
       <span class="bolt tr"></span>
       <span class="bolt bl"></span>
@@ -304,6 +343,7 @@
         </div>
 
         <div class="footer-note sign-font">1 KM = 0.621371 MI</div>
+      </div>
       </div>
     </div>
   </div>
