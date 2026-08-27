@@ -57,8 +57,8 @@
   .post-leg{
     position:absolute;
     top:100%;
-    width: clamp(16px, 2.6vw, 22px);
-    height: clamp(70px, 14vh, 160px);
+    width: clamp(22px, 3.4vw, 30px);
+    height: clamp(90px, 18vh, 200px);
     background: linear-gradient(90deg, #d7ded6 0%, #9aa69c 18%, #6b756d 45%, #8a968e 60%, #4c5750 100%);
     border-radius: 3px;
     box-shadow:
@@ -85,6 +85,20 @@
   .post-leg.left{ left:14%; }
   .post-leg.right{ right:14%; }
 
+  /* dark scrim behind the whole sign+posts so it lifts off a bright/busy background */
+  .sign-post::before{
+    content:"";
+    position:absolute;
+    left:50%; top:50%;
+    width:130%;
+    height:135%;
+    transform: translate(-50%,-50%);
+    background: radial-gradient(ellipse at center, rgba(0,0,0,.55) 0%, rgba(0,0,0,.28) 45%, transparent 72%);
+    filter: blur(6px);
+    z-index:-1;
+    pointer-events:none;
+  }
+
   .sign{
     position:relative;
     width:min(88vw, 520px);
@@ -95,9 +109,10 @@
     border-radius: 14px;
     padding: 30px 32px 28px;
     box-shadow:
-      0 0 34px 8px rgba(43,227,133,.4),
-      0 0 80px 22px rgba(43,227,133,.22),
-      0 24px 55px rgba(0,0,0,.6),
+      0 0 46px 14px rgba(43,227,133,.6),
+      0 0 100px 32px rgba(43,227,133,.35),
+      0 0 160px 60px rgba(43,227,133,.18),
+      0 24px 55px rgba(0,0,0,.65),
       inset 0 3px 5px rgba(255,255,255,.25),
       inset 0 -8px 18px rgba(0,0,0,.4),
       inset 0 0 0 2px rgba(255,255,255,.06);
@@ -241,12 +256,12 @@
     text-transform:uppercase;
     padding: 14px 8px;
     border-radius: 8px;
-    border: 2.5px solid rgba(255,255,255,.7);
-    background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0));
-    box-shadow: 0 3px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.15);
+    border: 2.5px solid rgba(255,255,255,.75);
+    background: linear-gradient(180deg, rgba(255,255,255,.2), rgba(255,255,255,.05));
+    box-shadow: 0 3px 0 rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.25);
     transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
   }
-  .dir-btn:hover{ background: linear-gradient(180deg, rgba(255,255,255,.14), rgba(255,255,255,.02)); }
+  .dir-btn:hover{ background: linear-gradient(180deg, rgba(255,255,255,.28), rgba(255,255,255,.08)); }
   .dir-btn.active{
     background: linear-gradient(180deg, #f2f5ef, #d7ded6);
     color: var(--sign-green-dark);
@@ -264,19 +279,26 @@
     opacity:.92;
   }
   .result-readout{
-    background: rgba(0,0,0,.28);
-    border: 2px solid rgba(255,255,255,.7);
+    background: radial-gradient(ellipse at center, rgba(43,227,133,.14) 0%, rgba(0,0,0,.32) 75%);
+    border: 2px solid var(--glow-green);
     border-radius: 8px;
-    padding: 12px 14px;
-    box-shadow: inset 0 0 18px rgba(0,0,0,.35);
+    padding: 14px 14px;
+    box-shadow: inset 0 0 22px rgba(0,0,0,.4), 0 0 18px 2px rgba(43,227,133,.35);
   }
   .result-readout .value{
     font-family:'Oswald','Segoe UI',sans-serif;
     font-weight:700;
-    font-size: clamp(36px, 9vw, 54px);
+    font-size: clamp(40px, 10vw, 60px);
     letter-spacing: 1px;
     color:#fff;
-    text-shadow: 0 0 14px var(--glow-green), 0 0 4px rgba(255,255,255,.5);
+    text-shadow: 0 0 18px var(--glow-green), 0 0 6px rgba(255,255,255,.6);
+  }
+
+  .pulse-anim{ animation: result-pulse .4s ease; }
+  @keyframes result-pulse{
+    0%{ box-shadow: inset 0 0 22px rgba(0,0,0,.4), 0 0 18px 2px rgba(43,227,133,.35); }
+    40%{ box-shadow: inset 0 0 22px rgba(0,0,0,.4), 0 0 34px 10px rgba(43,227,133,.75); }
+    100%{ box-shadow: inset 0 0 22px rgba(0,0,0,.4), 0 0 18px 2px rgba(43,227,133,.35); }
   }
 
   .footer-note{
@@ -377,6 +399,9 @@
 
     const factor = direction === 'km-to-mi' ? KM_TO_MI : MI_TO_KM;
     outputValue.textContent = formatNumber(num * factor);
+    resultBlock.classList.remove('pulse-anim');
+    void resultBlock.offsetWidth;
+    resultBlock.classList.add('pulse-anim');
   }
 
   function updateDirectionUI(){
